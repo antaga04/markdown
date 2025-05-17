@@ -1,4 +1,4 @@
-name: Convert Markdown to HTML and publish
+name: Build Markdown and Deploy
 
 on:
   push:
@@ -8,18 +8,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Install pandoc
-        run: sudo apt-get install -y pandoc
-
-      - name: Convert Markdown files to HTML
         run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Convert Markdown to HTML
+        run: |
+          mkdir -p public
+          echo "Archivos Markdown encontrados:"
+          ls docs/
           for file in docs/*.md; do
             filename=$(basename "$file" .md)
+            echo "Convirtiendo $file → public/$filename.html"
             pandoc "$file" -o "public/$filename.html"
           done
+          echo "Archivos generados:"
+          ls public/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
