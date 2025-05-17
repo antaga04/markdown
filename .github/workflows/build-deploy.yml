@@ -16,7 +16,6 @@ jobs:
 
       - name: Convert Markdown files to HTML
         run: |
-          mkdir public
           for file in docs/*.md; do
             filename=$(basename "$file" .md)
             pandoc "$file" -o "public/$filename.html"
