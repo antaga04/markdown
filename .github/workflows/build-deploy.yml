@@ -1,40 +1,51 @@
-name: Build Markdown and Deploy
+name: Generar HTML desde Markdown
 
 on:
-  push:
-    paths:
-      - 'docs/**/*.md'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Clonar el repositorio
         uses: actions/checkout@v3
-
-      - name: Install pandoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc
-
-      - name: Convert Markdown to HTML
-        run: |
-          mkdir -p public
-          echo "Archivos Markdown encontrados:"
-          ls docs/
-          for file in docs/*.md; do
-            filename=$(basename "$file" .md)
-            echo "Convirtiendo $file → public/$filename.html"
-            pandoc "$file" -o "public/$filename.html"
-          done
-          echo "Archivos generados:"
-          ls public/
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          publish_branch: gh-pages
-          force_orphan: true
+          fetch-depth: 0  # Necesario para cambiar de rama después
+
+      - name: Instalar pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Leer lista de archivos a generar
+        id: listar
+        run: |
+          mkdir html
+          while IFS= read -r base; do
+            md="doc/${base}.md"
+            html="html/${base}.html"
+            if [ -f "$md" ]; then
+              echo "Generando $html desde $md"
+              pandoc "$md" -f markdown-auto_identifiers -t html -o "$html"
+            else
+              echo "Archivo $md no existe, se omite."
+            fi
+          done < doc/.generar
+
+      - name: Cambiar a la rama html
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git fetch origin html || git checkout --orphan html
+          git checkout html || git checkout --orphan html
+
+      - name: Copiar archivos generados
+        run: |
+          rm -rf *
+          cp -r html/* ./
+
+      - name: Commit y push a rama html
+        run: |
+          git add .
+          git commit -m "Actualizar HTML generado manualmente" || echo "Nada nuevo que hacer"
+          git push origin html
